@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>暗算トレーニング</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f0e8;
+    --ink: #1a1a1a;
+    --accent: #e84343;
+    --accent2: #2a6ef5;
+    --muted: #999;
+    --surface: #fff;
+    --border: #e0d8cc;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Noto Sans JP', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  header {
+    padding: 20px 24px 12px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 0.05em;
+    color: var(--ink);
+  }
+
+  header .subtitle {
+    font-size: 0.78rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* ---- screens ---- */
+  .screen { display: none; flex: 1; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  /* ---- START SCREEN ---- */
+  #screenStart {
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    padding: 32px 24px;
+  }
+
+  .mode-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 12px;
+    text-align: center;
+  }
+
+  .mode-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .mode-btn {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 10px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 0.88rem;
+    color: var(--ink);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  .mode-btn.selected {
+    border-color: var(--accent);
+    background: #fff5f5;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .mode-btn .mode-example {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.3rem;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .count-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .count-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--ink);
+    background: transparent;
+    font-size: 1.3rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    font-family: 'Bebas Neue', sans-serif;
+  }
+
+  .count-btn:hover { background: var(--ink); color: var(--bg); }
+
+  .count-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.5rem;
+    min-width: 60px;
+    text-align: center;
+  }
+
+  .btn-start-big {
+    background: var(--ink);
+    color: var(--bg);
+    border: none;
+    border-radius: 14px;
+    padding: 18px 60px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.2s;
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .btn-start-big:active { transform: scale(0.97); }
+
+  /* ---- GAME SCREEN ---- */
+  #screenGame {
+    padding: 0;
+  }
+
+  .game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .progress-text {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  .timer-display {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    min-width: 70px;
+    text-align: right;
+  }
+
+  .progress-bar-wrap {
+    height: 4px;
+    background: var(--border);
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent2);
+    transition: width 0.3s ease;
+  }
+
+  .question-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    gap: 24px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .question-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(4rem, 20vw, 6rem);
+    line-height: 1;
+    text-align: center;
+    letter-spacing: -0.02em;
+    transition: transform 0.15s;
+    color: #ffffff;
+  }
+
+  .question-area:active .question-num { transform: scale(0.96); }
+
+  .answer-reveal {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(3rem, 16vw, 5rem);
+    color: var(--accent);
+    opacity: 0;
+    transition: opacity 0.2s;
+    letter-spacing: -0.02em;
+  }
+
+  .answer-reveal.show { opacity: 1; }
+
+  .tap-hint {
+    font-size: 0.8rem;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .next-btn-wrap {
+    padding: 0 24px 32px;
+  }
+
+  .btn-next {
+    width: 100%;
+    background: var(--accent2);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 16px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.3rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+
+  .btn-next.show { opacity: 1; pointer-events: all; }
+  .btn-next:active { transform: scale(0.98); }
+
+  /* ---- RESULT SCREEN ---- */
+  #screenResult {
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    padding: 32px 24px;
+  }
+
+  .result-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 3rem;
+    letter-spacing: 0.05em;
+    text-align: center;
+  }
+
+  .result-time {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 5rem;
+    color: var(--accent);
+    line-height: 1;
+    text-align: center;
+  }
+
+  .result-time span {
+    font-size: 1.5rem;
+    color: var(--muted);
+  }
+
+  .result-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .stat-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .stat-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    color: var(--accent2);
+  }
+
+  .stat-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 2px;
+  }
+
+  .best-badge {
+    background: #fff9e6;
+    border: 2px solid #f5c842;
+    border-radius: 99px;
+    padding: 8px 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #b8860b;
+    display: none;
+  }
+
+  .best-badge.show { display: block; }
+
+  .btn-retry {
+    background: var(--ink);
+    color: var(--bg);
+    border: none;
+    border-radius: 14px;
+    padding: 16px 48px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    width: 100%;
+    max-width: 320px;
+    transition: opacity 0.2s;
+  }
+
+  .btn-retry:hover { opacity: 0.85; }
+
+  .btn-back {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 48px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 0.85rem;
+    cursor: pointer;
+    width: 100%;
+    max-width: 320px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>暗算道場</h1>
+  <span class="subtitle">掛け算トレーニング</span>
+</header>
+
+<!-- START -->
+<div class="screen active" id="screenStart">
+  <div>
+    <div class="mode-label">難易度を選ぶ</div>
+    <div class="mode-grid">
+      <button class="mode-btn selected" onclick="selectMode('easy')" id="modeEasy">
+        <span class="mode-example">3 × 7</span>
+        かんたん<br><small>1桁 × 1桁</small>
+      </button>
+      <button class="mode-btn" onclick="selectMode('medium')" id="modeMedium">
+        <span class="mode-example">12 × 8</span>
+        ふつう<br><small>2桁 × 1桁</small>
+      </button>
+      <button class="mode-btn" onclick="selectMode('hard')" id="modeHard">
+        <span class="mode-example">23 × 47</span>
+        むずかしい<br><small>2桁 × 2桁</small>
+      </button>
+      <button class="mode-btn" onclick="selectMode('mix')" id="modeMix">
+        <span class="mode-example">？× ？</span>
+        ミックス<br><small>全部まぜ</small>
+      </button>
+    </div>
+  </div>
+
+  <div>
+    <div class="mode-label">問題数</div>
+    <div class="count-row">
+      <button class="count-btn" onclick="changeCount(-5)">−</button>
+      <div class="count-val" id="countVal">10</div>
+      <button class="count-btn" onclick="changeCount(5)">＋</button>
+    </div>
+  </div>
+
+  <button class="btn-start-big" onclick="startGame()">START</button>
+</div>
+
+<!-- GAME -->
+<div class="screen" id="screenGame">
+  <div class="game-header">
+    <div class="progress-text" id="progressText">1 / 10</div>
+    <div class="timer-display" id="timerDisplay">0.0</div>
+  </div>
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progressBar" style="width:0%"></div>
+  </div>
+  <div class="question-area" id="questionArea" onclick="revealAnswer()">
+    <div class="question-num" id="questionNum">3 × 7</div>
+    <div class="answer-reveal" id="answerReveal">21</div>
+    <div class="tap-hint" id="tapHint">タップして答えを見る</div>
+  </div>
+  <div class="next-btn-wrap">
+    <button class="btn-next" id="btnNext" onclick="nextQuestion()">次の問題 →</button>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div class="screen" id="screenResult">
+  <div class="result-title">結果発表</div>
+  <div class="result-time" id="resultTime">12.3<span>秒</span></div>
+  <div class="best-badge" id="bestBadge">🏆 ベスト記録更新！</div>
+  <div class="result-stats">
+    <div class="stat-box">
+      <div class="stat-val" id="statCount">10</div>
+      <div class="stat-label">問題数</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="statPerQ">1.2</div>
+      <div class="stat-label">1問あたり(秒)</div>
+    </div>
+  </div>
+  <button class="btn-retry" onclick="retryGame()">もう一度</button>
+  <button class="btn-back" onclick="backToStart()">設定に戻る</button>
+</div>
+
+<script>
+  let mode = 'easy';
+  let count = 10;
+  let questions = [];
+  let current = 0;
+  let revealed = false;
+  let timerInterval = null;
+  let startTime = 0;
+  let elapsed = 0;
+  let bestTimes = JSON.parse(localStorage.getItem('calcBest') || '{}');
+
+  function selectMode(m) {
+    mode = m;
+    ['easy','medium','hard','mix'].forEach(k => {
+      document.getElementById('mode' + k.charAt(0).toUpperCase() + k.slice(1))
+        .classList.toggle('selected', k === m);
+    });
+  }
+
+  function changeCount(d) {
+    count = Math.max(5, Math.min(30, count + d));
+    document.getElementById('countVal').textContent = count;
+  }
+
+  function randInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function generateQuestion(m) {
+    let a, b;
+    if (m === 'easy') { a = randInt(2,9); b = randInt(2,9); }
+    else if (m === 'medium') { a = randInt(11,99); b = randInt(2,9); }
+    else if (m === 'hard') { a = randInt(11,99); b = randInt(11,99); }
+    else {
+      const modes = ['easy','medium','hard'];
+      return generateQuestion(modes[randInt(0,2)]);
+    }
+    return { q: `${a} × ${b}`, a: a * b };
+  }
+
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function startGame() {
+    questions = Array.from({length: count}, () => generateQuestion(mode));
+    current = 0;
+    elapsed = 0;
+    showScreen('screenGame');
+    loadQuestion();
+    startTime = Date.now();
+    timerInterval = setInterval(() => {
+      elapsed = (Date.now() - startTime) / 1000;
+      document.getElementById('timerDisplay').textContent = elapsed.toFixed(1);
+    }, 100);
+  }
+
+  function loadQuestion() {
+    revealed = false;
+    const q = questions[current];
+    document.getElementById('questionNum').textContent = q.q;
+    document.getElementById('answerReveal').textContent = q.a;
+    document.getElementById('answerReveal').classList.remove('show');
+    document.getElementById('btnNext').classList.remove('show');
+    document.getElementById('tapHint').style.opacity = '1';
+    document.getElementById('progressText').textContent = `${current + 1} / ${questions.length}`;
+    document.getElementById('progressBar').style.width = `${(current / questions.length) * 100}%`;
+  }
+
+  function revealAnswer() {
+    if (revealed) return;
+    revealed = true;
+    document.getElementById('answerReveal').classList.add('show');
+    document.getElementById('btnNext').classList.add('show');
+    document.getElementById('tapHint').style.opacity = '0';
+  }
+
+  function nextQuestion() {
+    current++;
+    if (current >= questions.length) {
+      finishGame();
+    } else {
+      loadQuestion();
+    }
+  }
+
+  function finishGame() {
+    clearInterval(timerInterval);
+    const total = elapsed;
+    const perQ = (total / questions.length).toFixed(1);
+    const key = mode + '_' + count;
+    const isNew = !bestTimes[key] || total < bestTimes[key];
+    if (isNew) { bestTimes[key] = total; localStorage.setItem('calcBest', JSON.stringify(bestTimes)); }
+
+    document.getElementById('resultTime').innerHTML = `${total.toFixed(1)}<span>秒</span>`;
+    document.getElementById('statCount').textContent = questions.length;
+    document.getElementById('statPerQ').textContent = perQ;
+    document.getElementById('bestBadge').classList.toggle('show', isNew);
+    document.getElementById('progressBar').style.width = '100%';
+    showScreen('screenResult');
+  }
+
+  function retryGame() { startGame(); }
+  function backToStart() { showScreen('screenStart'); }
+</script>
+</body>
+</html>
